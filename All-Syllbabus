@@ -1,0 +1,427 @@
+## THINGS WHICH YOU NEED FOR L5
+
+### Study Order Module 0: How L5 interviews are actually judged
+
+**0.1 L5 bar and interview behavior**
+
+* Driving the design
+
+  * Asking the right questions early
+  * Setting boundaries and scope
+  * Proposing a clear architecture quickly
+  * Iterating with tradeoffs
+* L5 expectations
+
+  * Own major components end to end
+  * Make decisions via latency, availability, correctness, and cost
+  * Operability mindset: how it fails, how you detect it, how you recover
+
+**0.2 Communication artifacts you must produce in the interview**
+
+* Requirements list (functional + non-functional)
+* Back-of-the-envelope estimates (QPS, storage, bandwidth)
+* High-level architecture diagram
+* Critical flows: read path + write path
+* Data model and partitioning strategy
+* Failure modes and mitigations
+* Scale plan: what breaks first and how you evolve it
+
+---
+
+### Study Order Module 1: Interview frameworks and estimation
+
+**1.1 Framework**
+
+* PEDALS or equivalent structure
+
+  * Process: requirements and constraints
+  * Estimation: numbers to justify design
+  * Design: components and flows
+  * Architecture: storage, compute, cache, messaging
+  * List: bottlenecks, risks, tradeoffs
+  * Scale: evolution plan and multi-region
+
+**1.2 Estimation mechanics**
+
+* DAU/MAU assumptions, peak factor
+* Read/write ratio estimation
+* QPS and peak QPS
+* Payload sizing, storage per day, retention, total storage
+* Bandwidth calculations
+* Latency budgets (what must be under p99)
+* Cost intuition (especially cache vs DB vs network egress)
+
+---
+
+### Study Order Module 2: API, product surface, and data modeling
+
+**2.1 API design**
+
+* REST vs gRPC and when
+* Resource modeling, endpoints, request/response shapes
+* Pagination (cursor vs offset), sorting, filtering
+* Versioning strategies
+* Idempotency keys (especially for writes)
+* Error design: retries vs non-retryable errors
+* Rate limit headers and client behavior
+
+**2.2 Data modeling**
+
+* Entities, relationships, and access patterns
+* Normalization vs denormalization tradeoffs
+* Partition key selection and hot partition avoidance
+* Secondary indexes, inverted indexes (when search-like)
+* TTL/retention policies and archival
+* Soft delete vs hard delete
+* Multi-tenant data isolation patterns
+
+**2.3 Classic storage choices**
+
+* Relational DB: strong queries, transactions
+* Key-value store: simple lookups, massive scale
+* Document store: flexible schema
+* Wide-column store: high write throughput, time series patterns
+* Object storage for blobs
+* Search engine for text search
+* Time-series DB for metrics and telemetry
+
+**2.4 Precision Modeling:**
+
+* Floating point dangers (why you never use `float` for money).
+* Arbitrary-precision arithmetic (BigInt/BigDecimal).
+* **Ledger Design:** Double-entry bookkeeping schema design (Credit/Debit columns vs single balance column).
+
+**2.5 Event Sourcing & CQRS:**
+
+* Storing the *state changes* (events) rather than just the current state.
+* Replaying events to rebuild state (critical for debugging financial systems).
+* Separating the Read Model (Materialized View) from the Write Model (Event Log).
+
+---
+
+### Study Order Module 3: Core building blocks everyone expects at L5
+
+**3.1 Caching (must-master)**
+
+* Cache-aside vs write-through vs write-back
+* TTL and freshness strategy
+* Invalidation patterns
+* Negative caching
+* Cache stampede prevention
+
+  * request coalescing
+  * jittered TTL
+  * locks with timeouts
+* Local cache vs distributed cache
+* Consistency expectations from cache
+* Eviction basics (LRU, LFU conceptually)
+
+**3.2 Load balancing and service routing**
+
+* L4 vs L7 load balancing (your sheet)
+
+  * tradeoff: throughput vs routing control
+* Sticky sessions and when to avoid them
+* API gateway responsibilities
+
+  * auth verification, rate limiting, routing, observability hooks
+* Service discovery basics (conceptual)
+* Connection pooling and downstream protection
+
+**3.3 Async processing and background jobs**
+
+* When to go async
+* Job queue basics
+
+  * retries, backoff, jitter
+  * DLQ, poison messages
+* Ordering guarantees
+* At-least-once vs at-most-once vs effectively-once business effects
+* Deduplication keys and idempotent consumers
+* Outbox pattern (reliable event publishing from DB writes)
+
+---
+
+### Study Order Module 4: Distributed systems fundamentals for L5
+
+This is where many L5 candidates fail by being vague.
+
+**4.1 Replication and consistency basics**
+
+* Leader-follower vs multi-leader vs leaderless
+* Quorums (reads/writes), what they buy you
+* Strong vs eventual consistency
+* Read-your-writes, monotonic reads (practical meaning)
+* Conflict resolution basics (last-write-wins, version vectors conceptually)
+
+**4.2 Partitioning and sharding**
+
+* Horizontal partitioning strategies
+
+  * hash-based
+  * range-based
+  * directory-based
+* Rebalancing and resharding strategies (high level)
+* Hot keys and mitigation
+
+  * salting
+  * split hotspots
+  * caching and buffering
+
+**4.3 Distributed transactions at L5 depth**
+
+* Why 2PC is risky in availability terms (conceptual)
+* Sagas pattern (your sheet)
+
+  * orchestration vs choreography
+  * compensations and business semantics
+* Exactly-once business invariants
+
+  * avoid double charge, double booking, duplicate notifications
+
+**4.4 Consensus (L5 level only)**
+
+* What consensus solves: replicated state machine, leader election
+* Raft high-level mechanics
+
+  * leader election, log replication
+* When you need consensus (metadata, membership, locks, IDs)
+
+**4.5 Advanced Conflict Resolution (Beyond "Basics"):**
+
+* **Operational Transformation (OT):** The central server approach (Google Docs style).
+* **CRDTs (Conflict-free Replicated Data Types):** The decentralized approach (Figma/local-first style).
+* **Vector Clocks:** Not just conceptually, but how to use them to detect causal violations.
+
+---
+
+### Study Order Module 5: Databases you must know for L5 interviews
+
+**5.1 Practical DB performance tradeoffs**
+
+* Indexing basics
+
+  * B-tree indexes (concept)
+  * composite indexes
+* Query patterns and how they shape schema
+* Transaction isolation levels (high level)
+* Read replicas and replication lag
+* Backups, PITR concept, and restore plan
+
+**5.2 Storage engine awareness (lightweight but useful)**
+From your sheet, L5 needs the intuition, not the PhD depth.
+
+* B-trees vs LSM trees (your sheet)
+
+  * read amplification vs write amplification intuition
+* Why random writes hurt and why sequential writes help
+* Bloom filters concept (why reads can be faster in LSM systems)
+
+**5.3 Common data integrity patterns**
+
+* Uniqueness constraints and idempotency
+* Optimistic concurrency control
+* Conditional writes (compare-and-set style)
+* Distributed locks and why they are dangerous if misused
+
+  * leases, timeouts, fencing tokens conceptually
+
+---
+
+### Study Order Module 6: Reliability and resilience (L5 must-have)
+
+This is non-negotiable for “any company”.
+
+**6.1 Dependency safety**
+
+* Timeouts everywhere
+* Retries with backoff and jitter
+* Retry budgets
+* Circuit breakers
+* Bulkheads (your sheet)
+* Backpressure and admission control
+
+**6.2 Overload management**
+
+* Rate limiting (per user, per token, per IP, per API key)
+* Load shedding strategies
+* Priority queues (critical vs non-critical)
+
+**6.3 High availability architecture**
+
+* Single-region HA
+
+  * multi-AZ, replicas, failover basics
+* Multi-region basics
+
+  * active-passive vs active-active
+  * DNS failover vs anycast concept (you already have this)
+  * RPO/RTO definitions and how design changes them
+
+---
+
+### Study Order Module 7: Observability and operational readiness
+
+**7.1 Observability essentials**
+
+* Golden signals
+
+  * latency, traffic, errors, saturation
+* Logs, metrics, traces: what each is for
+* Correlation IDs end to end
+* Dashboards that matter
+* Alerting
+
+  * paging vs ticket alerts
+  * reducing noise
+
+**7.2 Tracing and sampling**
+
+* Head-based vs tail-based sampling (your sheet)
+* What you lose with sampling
+* Capturing errors and high latency paths reliably
+
+**7.3 Capacity planning and validation**
+
+* Load testing approach
+* Bottleneck identification plan
+* Rollback plan when scaling changes break production
+
+---
+
+### Study Order Module 8: Security and abuse at L5 depth
+
+**8.1 Authentication and authorization**
+
+* OAuth2 / OIDC (your sheet)
+* JWT validation and key rotation (conceptually)
+* API gateway as auth enforcement point
+* Authorization models
+
+  * RBAC vs ABAC
+  * tenant isolation and resource-level permissions
+
+**8.2 Data security**
+
+* Encryption in transit (TLS) and at rest
+* KMS and envelope encryption basics
+* Secrets management basics and rotation
+* Audit logging and compliance-friendly design (high level)
+
+**8.3 Abuse prevention**
+
+* DDoS/WAF conceptually
+* Bot protection hooks
+* Fraud/velocity checks patterns for sensitive flows
+
+---
+
+### Study Order Module 9: Common “design a system” domains that show up everywhere
+
+You should practice at least 1 system per category.
+
+**9.1 Feeds and timelines**
+
+* Fanout-on-write vs fanout-on-read
+* Caching feed pages
+* Consistency expectations (freshness vs stability)
+* Handling celebrity users and hotspots
+
+**9.2 Chat and realtime**
+
+* WebSockets vs SSE vs long polling
+* Presence, typing indicators, delivery receipts
+* Message ordering, dedupe, retries
+* Fanout architecture and scaling connections
+
+**9.3 Notifications**
+
+* Preferences, unsubscribe, quiet hours
+* Throttling and batching
+* Retries, DLQ, and provider outages
+
+**9.4 Search and discovery**
+
+* Inverted index basics
+* Indexing pipeline (eventual indexing)
+* Reindexing strategy
+* Autocomplete suggestions (prefix, n-gram conceptually)
+* Ranking basics (simple scoring and signals)
+
+**9.5 File and media systems**
+
+* Upload flows (resumable, multipart)
+* Pre-signed URLs
+* Metadata store vs blob store separation
+* Virus scanning, moderation pipeline
+* CDN caching and cache invalidation
+
+**9.6 Payments and booking style invariants**
+
+* Idempotency keys, double spend prevention
+* Holds, expirations, reconciliation
+* Audit trail and ledger vs balance concept
+
+**9.7 Geospatial Systems (CRITICAL MISSING PIECE):**
+
+* **Geohashing schemes:** QuadTrees vs. Geohash vs. **Google S2** (Hilbert Curves). You *must* understand S2 for Uber.
+* **Spatial Indexing:** How to query "Find all drivers within radius R" efficiently (k-nearest neighbors).
+* **Cell-based Aggregation:** How to aggregate demand (surge pricing) by region in real-time.
+
+---
+
+### Study Order Module 10: Networking depth required for L5
+
+Use your sheet but keep it interview-oriented.
+
+**10.1 Basics**
+
+* OSI intuition
+* TCP vs UDP tradeoffs
+* Latency components (RTT, handshake, TLS)
+* Connection pooling and keep-alive
+
+**10.2 Load balancing**
+
+* L4 vs L7 (already in your sheet)
+* Health checks, failover behavior
+* Sticky sessions vs statelessness
+
+**10.3 Global traffic**
+
+* DNS routing tradeoffs and TTL issues
+* Anycast concept and the risk of routing instability (your sheet)
+* Paxos deep mechanics and variants
+* Zab protocol deep reasoning and correctness proofs
+* Formal reasoning about consensus safety and liveness beyond Raft high-level
+
+---
+
+### Study Order Module 11: High-Performance & Real-Time Data
+
+**11.1 Stream Processing Patterns**
+
+* **Windowing:** Tumbling windows vs. Sliding windows vs. Session windows.
+* **Watermarks:** Handling late-arriving data in a stream (e.g., a mobile device uploads metrics 10 minutes late).
+* **Lambda vs. Kappa Architecture:** Batch + Speed layer vs. Stream-only layer.
+
+**11.2 Probabilistic Data Structures (The "Magic" Algorithms)**
+
+* *L5s use these to solve scale problems that are impossible with exact math.*
+* **Bloom Filters:** Does this item exist? (Already in your plan, but go deep).
+* **HyperLogLog:** Count unique items (e.g., "How many unique visitors today?") with 0.1% error using tiny memory.
+* **Count-Min Sketch:** Frequency tracking (e.g., "Top 10 most viewed videos") without sorting the whole list.
+
+---
+
+### Study Order Module 12: Advanced Scalability Patterns
+
+**12.1 Cell-Based Architecture (The "Bulkhead" Pattern)**
+
+* Instead of "All Web Servers talk to All DBs," you split the user base into completely isolated "Cells" or "Shards" (e.g., User 0-1M live in Cell A, which has its own LB, Web, DB, and Cache).
+* **Shuffle Sharding:** How to map users to cells to minimize blast radius.
+
+**12.2 Deterministic Simulation (FoundationDB/TigerBeetle style)**
+
+* Testing distributed systems by running them in a single-threaded, deterministic simulation loop. (This is a "Show off" topic for L5+ that impresses interviewers).
+---

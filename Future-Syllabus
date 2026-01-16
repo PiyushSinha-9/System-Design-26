@@ -1,0 +1,115 @@
+
+---
+
+### Study Order Module 11: Messaging and streaming at L5 depth
+
+**11.1 Message broker selection**
+
+* Kafka vs RabbitMQ vs Pulsar (your sheet)
+
+  * when to choose each based on workload
+* Consumer groups and partitioning intuition
+* Ordering scope (partition ordering vs global ordering)
+* Exactly-once meaning in business terms
+
+**11.2 Event-driven architecture patterns**
+
+* Outbox and CDC conceptually
+* Schema evolution for events
+* Handling late events and replays
+* Idempotent consumers
+
+---
+
+### Study Order Module 12: Your Codex case studies as “pattern libraries”
+
+You do not need to memorize them, but you should extract reusable ideas.
+
+* WhatsApp concurrency model lessons
+* Discord migration motivation and tail latency lessons
+* Netflix CDN control plane vs data plane separation
+* Haystack style blob packing and metadata bottlenecks
+* Ringpop style membership and consistent hashing routing
+
+---
+
+## THINGS BEYOND THE L5 LEVEL
+
+These are valuable, impressive, and very “staffy”, but not required to crack L5 in most companies. Learn after you are already clearing L5 mocks consistently.
+
+### Beyond L5: Deep protocol and edge mechanics
+
+* QUIC internals beyond the high-level benefits
+
+  * deep congestion control behavior, implementation details
+* HTTP/3 deep dive beyond “why it helps”
+* TLS 1.3 0-RTT security deep dive beyond “replay risk and idempotent only”
+* Anycast operational research-level issues and mitigation frameworks
+
+### Beyond L5: Database internals and operations deep dive
+
+* LSM compaction strategy details at an implementation level
+
+  * leveled vs tiered deep tuning, compaction debt, write stalls mechanics
+* Postgres autovacuum tuning and XID wraparound operational tuning details
+
+  * freeze settings, monitoring, long transaction pathology debugging
+* Storage engine design space papers and low-level IO behavior exploration
+
+### Beyond L5: Strict consistency systems and time semantics
+
+* Spanner TrueTime and commit-wait explained to research depth
+* Strict serializability enforcement mechanisms in geo-distributed DBs
+* Advanced clock and uncertainty modeling
+
+### Beyond L5: Collaboration correctness deep dive
+
+* CRDT types and merge semantics in depth
+* OT transformation function design and edge cases
+* Memory overhead, tombstone compaction strategies, correctness pitfalls
+
+### Beyond L5: Kafka internals and EOS implementation depth
+
+* Zero-copy and sendfile kernel path deep explanation
+* EOS across partitions implementation details and transaction coordinator internals
+* Performance tuning at the broker and storage layer level
+
+### Beyond L5: GenAI and vector serving depth
+
+* HNSW parameter tuning, memory layout, recall vs latency curves
+* PagedAttention memory system details and GPU scheduling implications
+* Continuous batching scheduler design
+* Speculative decoding algorithms and verification behavior
+
+### Beyond L5: Advanced multi-tenant blast-radius science
+
+* Shuffle sharding design and proofs of blast radius reduction
+* Per-tenant fairness algorithms beyond simple rate limiting
+* Advanced admission control based on SLO error budgets across tiers
+
+### Beyond L5: Large-scale org leadership topics
+
+* Org-wide architectural governance
+* Multi-year platform roadmaps
+* Migration programs spanning multiple teams
+* Deep incident management leadership patterns across organizations
+
+---
+
+## The order I recommend you follow (simple path)
+
+If you want the cleanest execution path for L5:
+
+1. Modules 0 to 3 (framework + API + data model + caching + async basics)
+2. Module 6 (reliability) + Module 7 (observability)
+3. Module 4 (distributed fundamentals) + Module 5 (DB practical)
+4. Module 10 (networking) + Module 11 (messaging)
+5. Module 9 (domain systems practice)
+6. Module 12 (case studies as pattern library)
+   Then only after this, go to Beyond L5 items.
+
+If you want, I can turn this into a weekly plan where each module has:
+
+* exact reading targets
+* 2 to 3 practice designs
+* a checklist of “must say” points that interviewers expect for L5
