@@ -425,3 +425,72 @@ Use your sheet but keep it interview-oriented.
 
 * Testing distributed systems by running them in a single-threaded, deterministic simulation loop. (This is a "Show off" topic for L5+ that impresses interviewers).
 ---
+
+### Study Order Module 13: Designing the Building Blocks (Infrastructure Design)
+
+**13.1 Design a Distributed Message Queue (Kafka/Pulsar)**
+
+* **The Log Abstraction:** Understanding that a queue is just an append-only commit log.
+* **Storage Internals:** Segments, Offsets, and Index files (sparse indexing).
+* **Data movement optimization:** **Zero-Copy** (sendfile) and why it makes Kafka fast.
+* **Pull vs. Push:** Tradeoffs (Flow control vs. Latency).
+* **Consumer Rebalancing:** How a group of consumers decides who reads what (Range vs. Round Robin) and how they detect failures (Heartbeats).
+
+**13.2 Design a Distributed Key-Value Store (Dynamo/Cassandra/Redis)**
+
+* **The Ring:** Consistent Hashing with Virtual Nodes (vnodes).
+* **Write Path:** Commit Log (WAL) -> Memtable -> SSTable.
+* **Read Path:** Bloom Filter -> Memtable -> SSTable Index -> SSTable Data.
+* **Compaction strategies:** Leveled vs. Size-Tiered compaction (read/write amplification tradeoffs).
+
+**13.3 Design a Distributed Lock Manager (Chubby/ZooKeeper)**
+
+* **The Problem:** Why you can't use Redis for "strong" locks (imperfect failover).
+* **Fencing Tokens:** Preventing "zombie" processes from writing after their lock expires.
+* **Sessions & Ephemeral Nodes:** How to detect client death automatically.
+
+**13.4 Design a Blob Store (S3/GCS)**
+
+* **The "Small File" Problem:** Why generic filesystems (ext4) fail with billions of small files (inode limits).
+* **Haystack Architecture:** Packing small files into large "volumes" to reduce disk seeks.
+* **Erasure Coding:** Storing data as mathematical parities (Reed-Solomon) to save space compared to 3x replication (1.5x overhead vs 3.0x).
+
+---
+
+### Study Order Module 14: Hardware Sympathy & I/O
+
+**14.1 Disk I/O Realities**
+
+* **Random vs. Sequential Access:** Why Sequential Write (Kafka) is 100x faster than Random Write (RDBMS).
+* **IOPS vs. Throughput:** When to optimize for one vs. the other.
+* **HDD vs. SSD:** Why log-structured storage is still relevant on SSDs (Write amplification).
+
+**14.2 Memory Management**
+
+* **Page Cache:** Relying on the OS kernel cache instead of implementing your own heap cache (Kafka's secret weapon).
+* **Memory Mapped Files (mmap):** Mapping file blocks directly to virtual memory.
+* **Off-heap memory:** Avoiding Java GC pauses by managing memory manually (Netty/Cassandra).
+
+---
+
+### Study Order Module 15: Specialized Algorithmic Systems
+
+**15.1 Distributed ID Generation**
+
+* **Snowflake ID (Twitter):** 64-bit integers composed of [Timestamp + Machine ID + Sequence].
+* **UUID vs. Int:** Why UUIDs cause fragmentation in B-Tree databases (random inserts).
+* **Central vs. Decentralized:** Ticket servers (Flickr) vs. Worker logic (Snowflake).
+
+**15.2 Distributed Rate Limiting**
+
+* **Algorithms:** Token Bucket vs. Leaky Bucket vs. Fixed Window vs. Sliding Window Log.
+* **The "Counter" Problem:** Race conditions when decrementing quota in Redis (Lua scripts).
+* **Synchronization:** How to limit globally without a central bottleneck (Batching quota allocation to local nodes).
+
+**15.3 Distributed Scheduling (Cron/Airflow)**
+
+* **Leader Election:** Who fires the job?
+* **Jitter:** Preventing all cron jobs from firing at 00:00:00.
+* **Resolution:** Why it's hard to schedule things "per second" at scale (Timer Wheels).
+
+---
