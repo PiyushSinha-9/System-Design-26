@@ -1,0 +1,512 @@
+## Module 1: Core mental models
+
+### 1.1 Concurrency vs parallelism
+
+* Concurrency: many tasks in progress, interleaving.
+* Parallelism: tasks actually run at the same time on multiple cores.
+* Where interviews use it: “why is my p99 bad”, “why is CPU high but throughput flat”.
+
+### 1.2 CPU-bound vs I/O-bound
+
+* CPU-bound: more cores helps, vectorization helps, batching helps.
+* I/O-bound: async I/O, connection pooling, backpressure helps.
+* Be able to say which your critical path is.
+
+### 1.3 Context switching and contention
+
+* Why too many threads can make you slower.
+* Lock contention and cache-line bouncing (high level).
+
+---
+
+## Module 2: Threading models used in backend services
+
+### 2.1 Thread-per-request
+
+* Simple model, but hits limits fast.
+* Problems: memory per thread, context switches, blocking I/O stalls.
+
+### 2.2 Thread pool + work queue
+
+* Fixed number of workers pull tasks from a queue.
+* What you must know:
+
+  * Pool sizing: why “more threads” is not always better.
+  * Queueing delay: p99 grows when queue backs up.
+  * Bounded queues: protect the service by rejecting early.
+
+### 2.3 Event loop + async I/O
+
+* Single or few threads handle many sockets (reactor model).
+* What you must know:
+
+  * Great for I/O-bound.
+  * One blocking call can stall everything unless isolated.
+  * Offload CPU work to a worker pool.
+
+### 2.4 Hybrid model (what most real services use)
+
+* Event loop for networking + worker pools for CPU tasks + separate pools per dependency type.
+
+---
+
+## Module 3: Synchronization primitives and when they hurt you
+
+### 3.1 Locks
+
+* Mutex / monitor lock: mutual exclusion.
+* RWLock: many readers, few writers.
+* Problems to mention:
+
+  * Convoying (one slow holder blocks everyone).
+  * Priority inversion (high priority waits on low).
+
+### 3.2 Atomic operations
+
+* CAS concept (compare-and-set).
+* Useful for counters, state transitions, lock-free queues (conceptual).
+
+### 3.3 Semaphores and bounded concurrency
+
+* Use for limiting parallel calls to a dependency.
+* Common use: “max 50 concurrent calls to DB”.
+
+### 3.4 Condition variables / wait-notify
+
+* Producer-consumer patterns.
+* Mention only if needed.
+
+---
+
+## Module 4: Classic concurrency bugs you must be able to talk about
+
+### 4.1 Race conditions
+
+* Shared state read-modify-write without protection.
+* Fix: locking, atomics, immutability, single-writer rule.
+
+### 4.2 Deadlocks
+
+* Cycles in lock acquisition.
+* Fix patterns:
+
+  * Global lock ordering.
+  * Try-lock with timeout.
+  * Reduce lock scope.
+  * Avoid holding locks across network calls.
+
+### 4.3 Starvation and unfairness
+
+* Some requests never get served under load.
+* Fix: fair queues, priorities, separate pools.
+
+### 4.4 Thundering herd
+
+* Many threads wake and hammer same resource.
+* Fix: request coalescing, single-flight, jitter.
+
+---
+
+## Module 5: Backpressure, overload, and graceful degradation
+
+This is what makes you look L5.
+
+### 5.1 Bounded queues and admission control
+
+* Reject early instead of queueing forever.
+* Explain: queueing increases p99 and timeouts create cascades.
+
+### 5.2 Rate limiting vs concurrency limiting
+
+* Rate limit: requests per second.
+* Concurrency limit: in-flight requests at a time.
+* In practice: you often need both.
+
+### 5.3 Bulkheads at thread level
+
+* Separate thread pools per dependency or endpoint class.
+* Example:
+
+  * Pool A: user read APIs
+  * Pool B: heavy export jobs
+  * Pool C: downstream payment calls
+    So one doesn’t starve the others.
+
+### 5.4 Timeouts, retries, hedged requests
+
+* Timeouts: always.
+* Retries: only with budgets and jitter.
+* Hedging: only for idempotent reads, watch load amplification.
+
+---
+
+## Module 6: Concurrency in distributed systems features (what interviewers love)
+
+### 6.1 Idempotency under retries
+
+* Requests can execute twice due to timeouts.
+* You must design idempotent handlers.
+
+### 6.2 Exactly-once vs effectively-once
+
+* Exactly-once is expensive.
+* Many systems aim for “effectively-once” with dedupe keys and transactional outbox.
+
+### 6.3 Concurrency control in data stores
+
+* Optimistic concurrency (version check, ETag).
+* Pessimistic locking (avoid if possible).
+* Compare-and-set conditional writes.
+
+---
+
+## Module 7: Performance modeling you should be able to do in interviews
+
+### 7.1 Little’s Law (high value)
+
+* In-flight = throughput × latency.
+* Helps you reason about concurrency limits.
+* Example use: “why does queue explode at peak”.
+
+### 7.2 Tail latency mechanics
+
+* p99 dominated by queueing + GC pauses + lock contention + slow dependency.
+* You should be able to name the top 5 causes.
+
+### 7.3 Pool sizing intuition
+
+* I/O bound: more concurrency helps until dependency saturates.
+* CPU bound: threads near core count, not 10x.
+* Thread pools per dependency prevent collapse.
+
+---
+
+## Module 8: Practical patterns to mention
+
+* Single-writer principle for mutable state.
+* Immutable data objects passed across threads.
+* Sharded locks (striping) for hot maps.
+* Work stealing pools (conceptual).
+* “Don’t hold locks while doing I/O”.
+* “Avoid shared mutable caches without proper protection”.
+
+---
+
+## Interview-ready checklist (use this in designs)
+
+When designing any service, be able to answer:
+
+* What is the threading model at the API layer?
+* What happens when downstream is slow?
+* Do you have bounded queues?
+* How do you avoid one heavy endpoint starving others?
+* How do retries affect concurrency and duplicate work?
+* What protects shared state? Where are races possible?
+* What is your max in-flight request limit and why?
+
+---
+
+## Module 9: The "Invisible" Hardware & Memory Layer
+
+*L5 candidates fail here because they think concurrency is just about software locks. It is also about hardware.*
+
+**9.1 Memory Visibility & The "Happens-Before" Relationship**
+
+* **The Problem:** Just because Thread A writes `x = 1`, Thread B doesn't necessarily see it immediately due to CPU caches.
+* **The Keyword:** **Memory Barriers / Fences**.
+* **The Concept:** `volatile` (Java/C++) or `atomic` variables don't just ensure atomicity; they ensure **visibility** by flushing CPU caches.
+
+**9.2 False Sharing (The "Silent Performance Killer")**
+
+* **The Scenario:** Two independent variables (`Counter A` and `Counter B`) sit next to each other in memory.
+* **The Failure:** Thread 1 updates `A`. Thread 2 updates `B`. Because they share a **Cache Line (usually 64 bytes)**, the CPU cores fight over the line, invalidating each other's caches continuously.
+* **The Fix:** Padding (adding dummy variables between A and B).
+
+**9.3 Instruction Reordering**
+
+* **The Concept:** Compilers and CPUs reorder your code to make it faster.
+* **The Risk:** In a double-checked locking singleton, the object reference might be published *before* the constructor finishes executing if you don't use proper barriers.
+
+---
+
+## Module 10: Advanced Non-Blocking Structures
+
+*You mentioned "Atomics" in Module 3, but you need to know how they build complex structures.*
+
+**10.1 Implementing a Lock-Free Queue (Ring Buffer)**
+
+* Understanding the **Disruptor Pattern** (LMAX).
+* How to use a **sequence number** and modulo arithmetic to allow producers and consumers to work without locking.
+
+**10.2 Copy-On-Write (COW)**
+
+* **Use Case:** Read-heavy, write-rare scenarios (e.g., config lists, allow-lists).
+* **Mechanism:** Readers read the old array. Writers copy the array, modify the copy, and atomically swap the pointer.
+* **Tradeoff:** High memory churn on writes, zero contention on reads.
+
+**10.3 The ABA Problem**
+
+* **The Bug:** Thread A reads value `V`. Thread B changes `V` -> `X` -> `V`. Thread A thinks nothing changed and proceeds, but the state *did* change.
+* **The Fix:** Versioned pointers (stamped references).
+
+---
+
+## Module 11: Language-Specific Runtimes (Crucial)
+
+*If you list Java, Go, or Python on your resume, you WILL be asked these specific questions.*
+
+**11.1 The "M:N" Scheduling Model (Go/Green Threads)**
+
+* **User Space vs. Kernel Space:** How Go routines (User threads) map to OS threads (Kernel threads).
+* **The Scheduler:** How the runtime "parks" a Go routine when it does I/O without blocking the actual OS thread.
+
+**11.2 Python/Node: The Event Loop Internals**
+
+* **The Trap:** "Node is single-threaded." (True for JS execution, false for I/O).
+* **libuv:** How the thread pool handles file I/O and DNS while the main loop handles network requests.
+
+**11.3 Java/C++: The Monitor Pattern**
+
+* How `synchronized` actually works (Mark word in object header, bias locking).
+
+---
+
+### A) Thread safety patterns and correctness tools
+
+1. **Thread confinement**
+
+* Keep state owned by one thread or one actor, communicate via messages.
+* Why it reduces locks and bugs.
+
+2. **Immutability and safe publication**
+
+* Immutable objects are naturally thread-safe.
+* Safe publication: how a constructed object becomes visible to others safely (conceptual).
+
+3. **Read-copy-update style thinking**
+
+* Similar to COW but as a general pattern: readers never lock, writers swap versions.
+
+### B) Coordinating cancellation and time
+
+4. **Cancellation and deadlines**
+
+* Propagating request cancellation to downstream work.
+* Prevents “zombie work” consuming threads after client left.
+* In interviews, this is a frequent follow-up.
+
+5. **Timeout semantics**
+
+* Per attempt timeout vs total timeout.
+* Why retries can violate total budgets.
+
+### C) Async pitfalls and “blocking boundary”
+
+6. **Blocking calls inside async/event loop**
+
+* How it causes stalls and latency spikes.
+* Standard fix: isolate blocking work into dedicated pool and bound it.
+
+7. **Thread pool starvation**
+
+* When all threads are blocked waiting on work that needs threads.
+* Typical in nested parallelism or sync over async mistakes.
+
+### D) Queues and ordering semantics
+
+8. **Bounded vs unbounded queues**
+
+* Unbounded queues hide overload and kill p99.
+* Bounded queues force backpressure and early rejection.
+
+9. **Work prioritization**
+
+* Priority queues, fairness, per tenant quotas.
+* This ties directly to bulkheads, admission control, and starvation.
+
+### E) Testing and debugging concurrency
+
+10. **How to debug a concurrency bug**
+
+* Symptoms: hangs, high CPU, missing updates, rare crashes.
+* Tools: thread dumps, lock graphs, tracing in critical sections, structured logs.
+* Write a minimal repro, add stress tests, reduce nondeterminism.
+
+11. **Deterministic testing mindset**
+
+* Not full FoundationDB simulator, but concept:
+
+  * inject delays
+  * randomize scheduling
+  * run under stress repeatedly
+  * use time control where possible
+
+These 11 items are the most common gaps that show up in real interviews.
+
+---
+
+## What you can downgrade to “optional” for L5
+
+If your goal is L5 at most companies, treat these as “learn only if time”:
+
+### Optional bucket 1: Hardware and memory model depth
+
+Your Module 9 is good, but do not over-invest.
+
+* **Happens-before, visibility, reordering**: know the idea, not proofs.
+* **False sharing**: great to mention as a performance gotcha.
+* **Memory fences**: mention conceptually.
+
+### Optional bucket 2: Lock-free internals
+
+Your Module 10 is mostly beyond typical L5 interviews.
+
+* Disruptor pattern, ABA, lock-free queue implementation: only needed for infra/low latency roles.
+
+### Optional bucket 3: Runtime internals
+
+Your Module 11 depends on your resume language.
+
+* If you claim deep Java: know synchronized basics, JMM at high level.
+* If you claim Go: goroutines, scheduler concept, blocking syscall behavior.
+* If you claim Node: event loop plus worker pool concept.
+  But “mark word, biased locking internals” is too deep for most L5 interviews.
+
+---
+
+## One more thing you should add (super important)
+
+### “Concurrency round question bank” topics
+
+Make sure you can handle at least these patterns:
+
+* Producer consumer with bounded buffer
+* Rate limiter (token bucket or leaky bucket) with threads
+* Thread safe cache (LRU at high level, or map + locks)
+* Deduplication under concurrency (idempotency key store)
+* Avoiding double execution (single flight)
+* Dining philosophers style deadlock reasoning
+* Fixing a flaky race in a snippet (explain the bug and fix)
+
+If you can do these, you are solid.
+
+
+### A) Thread safety patterns and correctness tools
+
+1. **Thread confinement**
+
+* Keep state owned by one thread or one actor, communicate via messages.
+* Why it reduces locks and bugs.
+
+2. **Immutability and safe publication**
+
+* Immutable objects are naturally thread-safe.
+* Safe publication: how a constructed object becomes visible to others safely (conceptual).
+
+3. **Read-copy-update style thinking**
+
+* Similar to COW but as a general pattern: readers never lock, writers swap versions.
+
+### B) Coordinating cancellation and time
+
+4. **Cancellation and deadlines**
+
+* Propagating request cancellation to downstream work.
+* Prevents “zombie work” consuming threads after client left.
+* In interviews, this is a frequent follow-up.
+
+5. **Timeout semantics**
+
+* Per attempt timeout vs total timeout.
+* Why retries can violate total budgets.
+
+### C) Async pitfalls and “blocking boundary”
+
+6. **Blocking calls inside async/event loop**
+
+* How it causes stalls and latency spikes.
+* Standard fix: isolate blocking work into dedicated pool and bound it.
+
+7. **Thread pool starvation**
+
+* When all threads are blocked waiting on work that needs threads.
+* Typical in nested parallelism or sync over async mistakes.
+
+### D) Queues and ordering semantics
+
+8. **Bounded vs unbounded queues**
+
+* Unbounded queues hide overload and kill p99.
+* Bounded queues force backpressure and early rejection.
+
+9. **Work prioritization**
+
+* Priority queues, fairness, per tenant quotas.
+* This ties directly to bulkheads, admission control, and starvation.
+
+### E) Testing and debugging concurrency
+
+10. **How to debug a concurrency bug**
+
+* Symptoms: hangs, high CPU, missing updates, rare crashes.
+* Tools: thread dumps, lock graphs, tracing in critical sections, structured logs.
+* Write a minimal repro, add stress tests, reduce nondeterminism.
+
+11. **Deterministic testing mindset**
+
+* Not full FoundationDB simulator, but concept:
+
+  * inject delays
+  * randomize scheduling
+  * run under stress repeatedly
+  * use time control where possible
+
+These 11 items are the most common gaps that show up in real interviews.
+
+---
+
+## What you can downgrade to “optional” for L5
+
+If your goal is L5 at most companies, treat these as “learn only if time”:
+
+### Optional bucket 1: Hardware and memory model depth
+
+Your Module 9 is good, but do not over-invest.
+
+* **Happens-before, visibility, reordering**: know the idea, not proofs.
+* **False sharing**: great to mention as a performance gotcha.
+* **Memory fences**: mention conceptually.
+
+### Optional bucket 2: Lock-free internals
+
+Your Module 10 is mostly beyond typical L5 interviews.
+
+* Disruptor pattern, ABA, lock-free queue implementation: only needed for infra/low latency roles.
+
+### Optional bucket 3: Runtime internals
+
+Your Module 11 depends on your resume language.
+
+* If you claim deep Java: know synchronized basics, JMM at high level.
+* If you claim Go: goroutines, scheduler concept, blocking syscall behavior.
+* If you claim Node: event loop plus worker pool concept.
+  But “mark word, biased locking internals” is too deep for most L5 interviews.
+
+---
+
+## One more thing you should add (super important)
+
+### “Concurrency round question bank” topics
+
+Make sure you can handle at least these patterns:
+
+* Producer consumer with bounded buffer
+* Rate limiter (token bucket or leaky bucket) with threads
+* Thread safe cache (LRU at high level, or map + locks)
+* Deduplication under concurrency (idempotency key store)
+* Avoiding double execution (single flight)
+* Dining philosophers style deadlock reasoning
+* Fixing a flaky race in a snippet (explain the bug and fix)
+
+If you can do these, you are solid.
+
