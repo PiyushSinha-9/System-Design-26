@@ -1,0 +1,21 @@
+At the application layer, I care about API contract, request semantics, authentication headers, idempotency keys, pagination, retries from clients, and protocol choice such as HTTP, gRPC, or WebSocket.
+
+
+
+-------
+
+Transport 
+
+| Port | Usually used for |
+| ---: | ---------------- |
+|   80 | HTTP             |
+|  443 | HTTPS            |
+|   53 | DNS              |
+|   22 | SSH              |
+| 5432 | PostgreSQL       |
+| 3306 | MySQL            |
+| 6379 | Redis            |
+| 9092 | Kafka            |
+
+
+For APIs and financial systems, I would generally use TCP-based protocols because correctness and ordered delivery matter. For realtime media or latency-sensitive traffic, UDP or QUIC may be better because retransmitting old packets can hurt user experience.

@@ -494,3 +494,454 @@ Use your sheet but keep it interview-oriented.
 * **Resolution:** Why it's hard to schedule things "per second" at scale (Timer Wheels).
 
 ---
+
+ ### Study Order Module 16: Solved-at-Scale System Design Practice
+
+This module converts theory into interview performance. Learning topics is not enough for L5. You must repeatedly design complete systems end to end.
+
+**16.1 Full design answer structure**
+
+For every system design problem, produce:
+
+* Functional requirements
+* Non-functional requirements
+* Back-of-the-envelope estimation
+* API design
+* Data model
+* High-level architecture
+* Write path
+* Read path
+* Async/background path
+* Caching strategy
+* Partitioning/sharding strategy
+* Consistency model
+* Failure modes
+* Observability plan
+* Cost and capacity concerns
+* Evolution plan from v1 to large scale
+* Final 60-second senior summary
+
+**16.2 Must-solve systems**
+
+Practice full designs for:
+
+* URL shortener
+* Rate limiter
+* Notification system
+* Chat system
+* News feed or timeline
+* Search autocomplete
+* File storage like Google Drive
+* Video platform like YouTube
+* Payment/order system
+* Booking/reservation system
+* Distributed job scheduler
+* Metrics/logging platform
+* Real-time analytics platform
+* Uber driver location tracking
+* Uber ride matching
+* Surge pricing system
+* Databricks-style data ingestion platform
+* Databricks-style job execution platform
+* Data catalog or metadata service
+* Multi-region key-value store
+
+**16.3 Company-specific system design practice**
+
+For Uber-style interviews:
+
+* Driver location updates
+* Nearby driver search
+* Trip matching
+* Surge pricing
+* ETA calculation
+* Real-time notifications
+* Marketplace consistency and fairness
+
+For Databricks-style interviews:
+
+* Large-scale data ingestion
+* Stream processing pipeline
+* Job scheduler
+* Query execution platform
+* Multi-tenant compute platform
+* Metadata catalog
+* Metrics and logs ingestion
+
+For Google-style interviews:
+
+* Google Drive
+* YouTube
+* Gmail search
+* Google Docs collaboration
+* Global rate limiter
+* Distributed lock service
+* Monitoring and alerting platform
+* Global key-value store
+
+**16.4 What to evaluate after every mock**
+
+After every design, ask:
+
+* What breaks first?
+* Which component is the bottleneck?
+* What is the hardest consistency problem?
+* What is the biggest cost driver?
+* What happens during dependency failure?
+* What happens during traffic spike?
+* What happens during regional failure?
+* What data can be lost?
+* What can be duplicated?
+* What can become stale?
+* What can become a hot partition?
+* What needs a human operational playbook?
+* What metric would page the on-call engineer?
+* What would I simplify if this were v1?
+* What would I change at 10x scale?
+
+---
+
+### Study Order Module 17: Red-Team System Design Review
+
+This module trains you to attack your own design like a senior interviewer. Every strong L5 answer should include risk analysis.
+
+**17.1 Red-team checklist**
+
+For every design, attack it from these angles:
+
+* Hot keys
+* Hot partitions
+* Celebrity users
+* Retry storms
+* Duplicate writes
+* Lost writes
+* Out-of-order events
+* Poison messages
+* Queue backlog
+* Consumer lag
+* Cache stampede
+* Cache inconsistency
+* Stale reads
+* Split-brain behavior
+* Race conditions
+* Clock skew
+* Thundering herd
+* DB primary overload
+* Cross-region replication lag
+* Regional outage
+* Data corruption
+* Bad deploy
+* Schema migration failure
+* Cost explosion
+* Security bypass
+* Tenant data leak
+* Abuse and bot traffic
+* Privacy and audit gaps
+* Observability blind spots
+
+**17.2 Red-team questions to ask**
+
+Use these after every system design:
+
+* Can one user or tenant overload the system?
+* Can one partition receive most of the traffic?
+* Can retries multiply traffic during an outage?
+* Can the same payment/order/booking happen twice?
+* Can a message be processed twice?
+* Can an event arrive late or out of order?
+* Can a cache serve dangerously stale data?
+* Can the system recover after queue backlog?
+* Can the database survive peak writes?
+* Can read replicas lag and break user experience?
+* Can regional failover lose data?
+* Can a bad deploy corrupt shared state?
+* Can schema migration break old clients?
+* Can logs or metrics become too expensive?
+* Can a tenant access another tenant’s data?
+* Can an attacker bypass rate limits?
+* Can on-call identify the issue quickly?
+
+**17.3 Red-team answer format**
+
+Use this format in interviews:
+
+* Risk: what can go wrong
+* Trigger: when it happens
+* Impact: what users or systems see
+* Detection: metric, log, trace, or alert
+* Mitigation: immediate protection
+* Prevention: design change or guardrail
+
+Example:
+
+Risk: retry storm against payment provider
+Trigger: provider latency increases and clients retry aggressively
+Impact: request volume multiplies, causing more timeouts and duplicate attempts
+Detection: p99 latency, retry rate, provider error rate, circuit breaker open count
+Mitigation: bounded retries, exponential backoff with jitter, circuit breaker
+Prevention: idempotency keys, retry budgets, async payment processing, DLQ and reconciliation
+
+---
+
+### Study Order Module 18: Concrete Infrastructure Stack Deep Dives
+
+This module ensures you can discuss real technologies, not just abstract boxes.
+
+**18.1 Redis**
+
+Must know:
+
+* Cache-aside pattern
+* TTL and invalidation
+* Hot keys
+* Cache stampede prevention
+* Redis memory estimation
+* Eviction policies
+* Redis as rate limiter
+* Redis sorted sets
+* Redis streams at high level
+* Single-threaded execution model
+* Cluster and shard basics
+* When Redis is dangerous for strong distributed locks
+
+Interview depth:
+
+* Use Redis for low-latency cache, counters, sessions, rate limiting, and leaderboards.
+* Avoid treating Redis as a source of truth unless durability and recovery are carefully designed.
+
+**18.2 PostgreSQL**
+
+Must know:
+
+* B-tree indexes
+* Composite indexes
+* Query plans at a high level
+* Transactions
+* Isolation levels
+* Read replicas
+* Replication lag
+* Connection pooling
+* Partitioning
+* Vacuum and bloat at a high level
+* Unique constraints for idempotency
+* Row-level locking
+* Optimistic concurrency
+
+Interview depth:
+
+* Use PostgreSQL when strong consistency, relational modeling, transactions, and complex queries matter.
+* Watch for write bottlenecks, connection limits, large indexes, and migration risk.
+
+**18.3 Kafka**
+
+Must know:
+
+* Topic, partition, offset
+* Consumer group
+* Ordering within a partition
+* Partition key selection
+* Retention
+* Replay
+* Consumer lag
+* Rebalancing
+* DLQ
+* Idempotent consumers
+* Outbox pattern
+* At-least-once delivery
+* Exactly-once business effects vs exactly-once infrastructure claims
+
+Interview depth:
+
+* Use Kafka when you need durable event streams, replayability, decoupling, and high-throughput async processing.
+* Partition key choice is one of the most important design decisions.
+
+**18.4 Elasticsearch or OpenSearch**
+
+Must know:
+
+* Inverted index
+* Document indexing
+* Refresh delay
+* Eventual consistency
+* Reindexing
+* Shards and replicas
+* Search ranking basics
+* Autocomplete approaches
+* Write amplification
+* Mapping design
+* High-cardinality fields
+
+Interview depth:
+
+* Use search engines for text search, filtering, autocomplete, and discovery.
+* Do not use Elasticsearch as the primary transactional database.
+
+**18.5 Cassandra and DynamoDB-style wide-column or key-value stores**
+
+Must know:
+
+* Partition key
+* Sort key or clustering key
+* Access-pattern-first modeling
+* Wide rows
+* Hot partitions
+* TTL
+* Eventual consistency
+* Tunable consistency at a high level
+* LSM-tree intuition
+* Write-heavy workload fit
+* Secondary index limitations
+
+Interview depth:
+
+* Use these systems for high-scale simple access patterns.
+* Query flexibility is sacrificed for scale and predictable access paths.
+
+**18.6 ZooKeeper, etcd, and coordination systems**
+
+Must know:
+
+* Leader election
+* Service discovery metadata
+* Distributed coordination
+* Ephemeral nodes or leases
+* Sessions
+* Fencing tokens
+* Why coordination systems must be used carefully
+* Why they are not general-purpose databases
+
+Interview depth:
+
+* Use coordination systems for metadata, membership, leader election, and configuration.
+* Avoid putting high-volume application traffic through them.
+
+**18.7 Prometheus, Grafana, logs, and tracing**
+
+Must know:
+
+* Metrics vs logs vs traces
+* RED metrics
+* USE metrics
+* Golden signals
+* High-cardinality label explosion
+* Histograms and percentiles
+* Alert fatigue
+* SLO-based alerting
+* Trace propagation
+* Sampling
+* Correlation IDs
+
+Interview depth:
+
+* Senior designs must include how the system is operated, debugged, and alerted on.
+* A system without observability is incomplete at L5.
+
+---
+
+### Study Order Module 19: Interview Drill Templates
+
+This module gives reusable templates for repeated practice.
+
+**19.1 Estimation drill template**
+
+For each problem, answer:
+
+* How many users?
+* How many actions per user per day?
+* What is average QPS?
+* What is peak QPS?
+* What is read/write split?
+* What is payload size?
+* What is storage per day?
+* What is retention?
+* What is total storage after replication?
+* What is bandwidth?
+* What is cache size?
+* What is the first likely bottleneck?
+* Which design choice changes because of this estimate?
+
+**19.2 Design drill template**
+
+For each system, answer:
+
+* What are the core requirements?
+* What are the non-goals?
+* What are the APIs?
+* What are the entities?
+* What is the write path?
+* What is the read path?
+* What should be synchronous?
+* What should be asynchronous?
+* What should be cached?
+* What should be partitioned?
+* What consistency is required?
+* What can be eventually consistent?
+* What are the top three failure modes?
+* What metrics should be monitored?
+* What is the v1 design?
+* What changes at 10x scale?
+
+**19.3 Red-team drill template**
+
+For each design, answer:
+
+* How can duplicate work happen?
+* How can data be lost?
+* How can data become stale?
+* How can traffic amplify?
+* How can one key become hot?
+* How can one tenant hurt others?
+* How can the queue get stuck?
+* How can the cache hurt correctness?
+* How can region failover go wrong?
+* How can on-call debug it?
+
+---
+
+### Study Order Module 20: Product and Requirement Judgment
+
+This module improves senior-level judgment. Many candidates jump into architecture before understanding the product.
+
+**20.1 Requirement clarification**
+
+Ask:
+
+* Who are the users?
+* What is the core user action?
+* What is the expected scale?
+* What is the read/write ratio?
+* What consistency is required?
+* What latency matters most?
+* What data must never be lost?
+* What can be eventually consistent?
+* What is the retention requirement?
+* What is the privacy or compliance requirement?
+* What is out of scope?
+
+**20.2 Non-functional requirement judgment**
+
+For every design, explicitly discuss:
+
+* Latency
+* Availability
+* Durability
+* Consistency
+* Scalability
+* Cost
+* Security
+* Operability
+* Compliance
+* Maintainability
+
+**20.3 Senior tradeoff language**
+
+Use phrases like:
+
+* If correctness is more important than latency, I would keep this synchronous.
+* If freshness can be relaxed, I would use async materialized views.
+* If reads dominate, I would denormalize and cache.
+* If writes dominate, I would optimize partitioning and avoid secondary-index explosion.
+* If hot keys are likely, I would shard by a more balanced key or add salting.
+* If this is payment-like, I would prioritize idempotency, ledger correctness, and reconciliation.
+* If this is user-facing realtime, I would prioritize p99 latency and graceful degradation.
+* If this is analytics, I would prioritize throughput, replayability, and cost efficiency.

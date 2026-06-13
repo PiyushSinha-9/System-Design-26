@@ -1,0 +1,142 @@
+Refernce -: https://static.googleusercontent.com/media/sre.google/en//static/pdf/rule-of-thumb-latency-numbers-letter.pdf
+
+
+The numbers to memorize (best ROI for back-of-envelope)
+
+Use these as anchors:
+
+L1 cache hit: ~1 ns
+
+L2 cache hit: ~4 ns
+
+Branch mispredict: ~3 ns
+
+Main memory (DRAM) access:.if you miss cache: ~100 ns
+
+SSD random read (4 KB): ~20 μs (think “tens of microseconds”)
+
+Datacenter round trip (service-to-service): ~0.5 ms
+
+SSD sequential read (1 MB): ~1 ms
+
+HDD seek: ~10 ms
+
+Intercontinental RTT: ~150 ms
+
+Bandwidth reminder: 10 Gbps sends 2 KB in ~1.6 μs, and 1 MB in ~0.8 ms (serialization time).
+
+These anchors are enough to make 90% of interview latency arguments.
+
+What each item means (with examples)
+L1 cache reference (~1 ns)
+
+Meaning: CPU reads data that is already in the smallest, fastest cache (L1).
+Example: looping over a tight array that stays hot in cache.
+Interview use: “CPU work is basically free compared to network and disk if data is cache-hot.”
+
+Branch mispredict (~3 ns)
+
+Meaning: CPU guessed the wrong path for an if and has to flush and recover.
+Example: if (x % 2 == 0) on random data inside a hot loop.
+Interview use: shows why “unpredictable branching” can hurt tight compute, but it is still tiny compared to I/O.
+
+L2 cache reference (~4 ns)
+
+Meaning: data not in L1 but present in L2 cache.
+Example: scanning a slightly larger working set that does not fit in L1.
+Interview use: helps you explain “memory locality matters.”
+
+Mutex lock/unlock (~17 ns)
+
+Meaning: cost of taking and releasing a lock when there is no contention (best case).
+Example: protecting a counter in a single-threaded hot path.
+Interview use: important caveat: the real killer is contention, where wait time can jump to microseconds or milliseconds.
+
+Main memory reference (~100 ns)
+
+Meaning: CPU had a cache miss, so it fetches from DRAM.
+Example: pointer chasing in a linked list or hash table with poor locality.
+Interview use: why cache-friendly data structures matter, and why random access is slower than sequential.
+
+Compress 1 KB with Zippy (~2 μs)
+
+Meaning: CPU time to compress a small chunk.
+Example: compressing log/event payloads before writing or sending.
+Interview use: compression can be worth it to save network or storage, but it adds CPU latency.
+
+Read 1 MB sequentially from memory (~10 μs)
+
+Meaning: streaming read limited by memory bandwidth, not latency.
+Example: copying a 1 MB buffer in-process.
+Interview use: “moving bytes” has a cost, even without network or disk.
+
+Send 2 KB over 10 Gbps (~1.6 μs)
+
+Meaning: pure serialization time on the wire for a small payload at 10 Gbps (does not include RTT).
+Example: sending a small RPC request body.
+Interview use: for small RPCs, RTT dominates, not bandwidth.
+
+SSD 4 KB random read (~20 μs)
+
+Meaning: point read on SSD (think key-value lookup or fetching one DB page).
+Example: cache miss goes to database, database needs one page read.
+Interview use: random I/O is much cheaper on SSD than HDD, but still far slower than RAM.
+
+Read 1 MB sequentially from SSD (~1 ms)
+
+Meaning: streaming throughput from SSD.
+Example: scanning a segment file or reading a blob chunk.
+Interview use: explains why sequential scans can be okay, and why batching helps.
+
+Round trip within the same datacenter (~0.5 ms)
+
+Meaning: one request to another service and a response back, within one DC/region.
+Example: API service calls auth service then returns.
+Interview use: “every extra hop costs you,” and why you reduce fanout on the critical path.
+
+Read 1 MB sequentially from disk (~5 ms) and Disk seek (~10 ms)
+
+Meaning: HDD behavior. Seek is the head move, sequential read is streaming once positioned.
+Example: random queries on HDD get killed by seeks.
+Interview use: why modern systems avoid random access on HDD and prefer SSD or log-structured access.
+
+Read 1 MB over 1 Gbps network (~10 ms)
+
+Meaning: transfer time limited by bandwidth at 1 Gbps.
+Example: pulling data over a slow link, or large payloads.
+Interview use: big payloads are expensive, so keep responses small and paginate.
+
+TCP packet round trip between continents (~150 ms)
+
+Meaning: cross-ocean network RTT.
+Example: client in India hitting a US service, or a synchronous cross-region dependency.
+Interview use: this is why multi-region calls on the critical path destroy p99.
+
+How to use this in interviews (2 quick examples)
+Example 1: “Why caching matters”
+
+If DB is on SSD, a cache miss might cost on the order of:
+
+service-to-DB RTT within DC: ~0.5 ms
+
+plus SSD read: ~20 μs
+So you are quickly around ~0.5 ms+ even before compute.
+A cache hit avoids the SSD work and often avoids the hop.
+
+Example 2: “Why cross-region synchronous calls are bad”
+
+One extra cross-region dependency can add ~150 ms to p99. That dwarfs everything else.
+
+If you want, tell me the kind of interviews you are targeting (Databricks infra vs product vs data platform). I’ll give you a “memorize list” tuned for those, plus 5 back-of-envelope drills that reuse these exact numbers.
+
+
+----------------------------------------------------------------
+
+Operation,Cycles (Approx),Time (Approx)
+CPU Register Access,0 cycles,Immediate
+Simple Math (Add/Sub),1 cycle,~0.3 ns
+Branch Mispredict,~10-20 cycles,~3 ns
+L1 Cache Reference,~3-4 cycles,~1 ns
+L2 Cache Reference,~10-12 cycles,~4 ns
+Mutex Lock/Unlock,~25 cycles,~10 ns
+Main Memory (RAM),~200-300 cycles,~100 ns
